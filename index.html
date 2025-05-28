@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Цифровая открытка</title>
+  <style>
+    /* Общие настройки */
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: #f0f0f0;
+      overflow-x: hidden;
+      font-family: sans-serif;
+    }
+
+    /* Центрируем «книгу» и делаем её обёртку для вращения */
+    #flipWrapper {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin-top: 283px;
+    }
+    /* При ландшафтном режиме — поворачиваем обёртку на 90° */
+    body.landscape #flipWrapper {
+      transform: rotate(90deg);
+      transform-origin: center center;
+    }
+
+    /* Контейнер «книги» */
+    .book {
+      position: relative;
+      width: 100vw;
+      max-width: 240px;
+      aspect-ratio: 2/3;
+      perspective: 1200px;
+    }
+
+    /* Страницы */
+    .right-page,
+    .page {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+    }
+    .right-page {
+      opacity: 0;
+      transition: opacity 0.5s ease 0.5s;
+      z-index: 0;
+    }
+    .right-page.visible {
+      opacity: 1;
+    }
+
+    .page {
+      transform-style: preserve-3d;
+      transform-origin: left;
+      transition: transform 1s ease-in-out;
+      z-index: 2;
+      cursor: pointer;
+    }
+    .page .front,
+    .page .back {
+      position: absolute;
+      inset: 0;
+      backface-visibility: hidden;
+    }
+    .page .back {
+      transform: rotateY(180deg);
+    }
+    .page.flipped {
+      transform: rotateY(-180deg);
+    }
+
+    /* Адаптивные изображения */
+    img {
+      width: 100%;
+      height: auto;
+      object-fit: contain;
+      border-radius: 4px;
+    }
+
+    /* Оверлей-подсказка «Переверни телефон» */
+    .rotate-prompt {
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0, 0, 0, 0.85);
+      color: #fff;
+      font-size: 2rem;
+      text-align: center;
+      z-index: 1000;
+    }
+
+    /* Оверлей для полноразмерного просмотра */
+    .overlay {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity .3s;
+      z-index: 1000;
+    }
+    .overlay.visible {
+      opacity: 1;
+      visibility: visible;
+    }
+    .overlay img {
+      max-width: 90vw;
+      max-height: 90vh;
+      border-radius: 8px;
+    }
+    .overlay .close-btn {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      font-size: 2rem;
+      color: #fff;
+      cursor: pointer;
+      user-select: none;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Подсказка перевернуть телефон -->
+  <div class="rotate-prompt" id="rotatePrompt">
+    ПЕРЕВЕРНИ<br>ТЕЛЕФОН
+  </div>
+
+  <!-- Обёртка для «книги» -->
+  <div id="flipWrapper">
+    <div class="book">
+      <div class="right-page" id="rightPage">
+        <!-- Frame61 -->
+        <img src="https://i.postimg.cc/0yRCdK8j/Frame-61.png" alt="Правая страница" />
+      </div>
+      <div class="page" id="flipPage">
+        <div class="front">
+          <!-- Обложка -->
+          <img src="https://i.postimg.cc/Nj6kNGM4/image.png" alt="Обложка" />
+        </div>
+        <div class="back" id="backSide">
+          <!-- Frame59 -->
+          <img src="https://i.postimg.cc/zXRjgFY4/Frame-59.png" alt="Обратная сторона" />
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Оверлей для полноразмерного просмотра -->
+  <div class="overlay" id="overlay">
+    <span class="close-btn" id="closeBtn">&times;</span>
+    <img src="" alt="Полный размер" id="overlayImg">
+  </div>
+
+  <script>
+    // Функции открытия/закрытия книги
+    const flipPage  = document.getElementById('flipPage');
+    const rightPage = document.getElementById('rightPage');
+    const backSide  = document.getElementById('backSide');
+    let flipped = false, animTimeout;
+
+    function flipCover() {
+      flipPage.classList.add('flipped');
+      rightPage.classList.add('visible');
+      flipped = true;
+    }
+    function unflipCover() {
+      rightPage.classList.remove('visible');
+      setTimeout(() => {
+        flipPage.classList.remove('flipped');
+        flipped = false;
+        scheduleAutoFlip();
+      }, 500);
+    }
+    function scheduleAutoFlip() {
+      clearTimeout(animTimeout);
+      if (!flipped) animTimeout = setTimeout(flipCover, 5000);
+    }
+
+    // Оверлей для полноразмерного просмотра
+    const overlay    = document.getElementById('overlay');
+    const overlayImg = document.getElementById('overlayImg');
+    const closeBtn   = document.getElementById('closeBtn');
+    flipPage.addEventListener('click', flipCover);
+    flipPage.addEventListener('touchstart', flipCover);
+    backSide.addEventListener('click', unflipCover);
+    backSide.addEventListener('touchstart', unflipCover);
+
+    // Закрытие оверлея по крестику или клику вне картинки
+    closeBtn.addEventListener('click', () => overlay.classList.remove('visible'));
+    overlay.addEventListener('click', e => {
+      if (e.target === overlay) overlay.classList.remove('visible');
+    });
+
+    // Детект мобильного устройства и показ подсказки
+    document.addEventListener('DOMContentLoaded', () => {
+      const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+      const prompt = document.getElementById('rotatePrompt');
+      if (isMobile) {
+        prompt.style.display = 'flex';
+        setTimeout(() => {
+          prompt.style.display = 'none';
+          document.body.classList.add('landscape');
+          scheduleAutoFlip();
+        }, 3000);
+      } else {
+        scheduleAutoFlip();
+      }
+    });
+  </script>
+</body>
+</html>
